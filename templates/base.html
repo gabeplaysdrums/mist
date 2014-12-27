@@ -1,0 +1,30 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>{% block title %}Mist{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/style-xlarge.css' %}" />
+    <style type="text/css">
+
+      #content {
+        padding: 15px;
+      }
+
+    </style>
+    <script src="{% static 'js/jquery-1.11.2.min.js' %}"></script>
+    {% block head %}{% endblock %}
+  </head>
+  <body>
+    {% block body %}
+    <div id="content">
+      {% block content %}
+      <h1>It's just a vapor ...</h1>
+      <p>
+        This page is currently under construction.
+      </p>
+      {% endblock %}
+    </div>
+    {% endblock %}
+  </body>
+</html>
