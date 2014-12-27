@@ -25,15 +25,20 @@
 
                 console.log("Authenticated successfully");
 
+                var startDate = new Date();
                 client.writeFile("hello_world.txt", "Hello, world!\n", function(error, stat) {
 
-                if (error)
-                {
-                    console.error("Error while writing file: " + error);
-                }
+                    if (error)
+                    {
+                        console.error("Error while writing file: " + error);
+                        return;
+                    }
 
-                console.log("File saved as revision " + stat.versionTag);
-              });
+                    console.log("File saved as revision " + stat.versionTag);
+
+                    var elapsedMillis = new Date() - startDate;
+                    console.log("Uploaded in " + (elapsedMillis / 1000) + " seconds.");
+                });
             });
         }
 
