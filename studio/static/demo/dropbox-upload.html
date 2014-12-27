@@ -25,30 +25,35 @@
 
                 console.log("Authenticated successfully");
 
-                var inputElem = document.getElementById("chooser");
+                var chooserElem = document.getElementById("chooser");
 
-                inputElem.addEventListener("change", function(e) {
+                chooserElem.addEventListener("change", function(e) {
 
-                    var file = inputElem.files[0];
+                    var file = chooserElem.files[0];
 
                     var startDate = new Date();
-                    client.writeFile(file.name, file, function(error, stat) {
+                    console.log("Uploading files");
 
-                        if (error)
-                        {
-                            console.error("Error while writing file: " + error);
-                            return;
-                        }
+                    for (var i=0; i < 4; i++)
+                    {
+                        client.writeFile(file.name + "." + i, file, function(error, stat) {
 
-                        console.log("File saved as revision " + stat.versionTag);
+                            if (error)
+                            {
+                                console.error("Error while writing file: " + error);
+                                return;
+                            }
 
-                        var elapsedMillis = new Date() - startDate;
-                        console.log("Uploaded in " + (elapsedMillis / 1000) + " seconds.");
-                    });
+                            console.log("File saved as revision " + stat.versionTag);
+
+                            var elapsedMillis = new Date() - startDate;
+                            console.log("Elapsed time: " + (elapsedMillis / 1000).toFixed(3) + " seconds.");
+                        });
+                    }
 
                 }, false);
 
-                inputElem.disabled = false;
+                chooserElem.disabled = false;
             });
         }
 
