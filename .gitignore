@@ -7,3 +7,6 @@
 
 # Django development database
 db.sqlite3
+
+# PyCharm IDE
+.idea/
