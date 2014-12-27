@@ -10,7 +10,7 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/dropbox.js/0.10.2/dropbox.min.js"></script>
     <script>
 
-        function test()
+        function setup()
         {
             // MistStudio app key (https://www.dropbox.com/developers/apps/info/dj2e7jb5n7q6j60)
             var client = new Dropbox.Client({ key: "dj2e7jb5n7q6j60" });
@@ -25,29 +25,40 @@
 
                 console.log("Authenticated successfully");
 
-                var startDate = new Date();
-                client.writeFile("hello_world.txt", "Hello, world!\n", function(error, stat) {
+                var inputElem = document.getElementById("chooser");
 
-                    if (error)
-                    {
-                        console.error("Error while writing file: " + error);
-                        return;
-                    }
+                inputElem.addEventListener("change", function(e) {
 
-                    console.log("File saved as revision " + stat.versionTag);
+                    var file = inputElem.files[0];
 
-                    var elapsedMillis = new Date() - startDate;
-                    console.log("Uploaded in " + (elapsedMillis / 1000) + " seconds.");
-                });
+                    var startDate = new Date();
+                    client.writeFile(file.name, file, function(error, stat) {
+
+                        if (error)
+                        {
+                            console.error("Error while writing file: " + error);
+                            return;
+                        }
+
+                        console.log("File saved as revision " + stat.versionTag);
+
+                        var elapsedMillis = new Date() - startDate;
+                        console.log("Uploaded in " + (elapsedMillis / 1000) + " seconds.");
+                    });
+
+                }, false);
+
+                inputElem.disabled = false;
             });
         }
 
     </script>
   </head>
-  <body onload="test();">
+  <body onload="setup();">
 
     <p>
-      Dropbox upload demo page.
+      Choose a file to upload:
+      <input id="chooser" type="file" disabled />
     </p>
 
   </body>
