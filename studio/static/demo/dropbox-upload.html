@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<!--
+
+  Dropbox upload demo based on:
+  https://github.com/dropbox/dropbox-js/blob/stable/guides/getting_started.md
+
+-->
+<html>
+  <head>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/dropbox.js/0.10.2/dropbox.min.js"></script>
+    <script>
+
+        function test()
+        {
+            // MistStudio app key (https://www.dropbox.com/developers/apps/info/dj2e7jb5n7q6j60)
+            var client = new Dropbox.Client({ key: "dj2e7jb5n7q6j60" });
+
+            client.authenticate(function(error, client) {
+
+                if (error)
+                {
+                    console.error("Error while authenticating: " + error);
+                    return;
+                }
+
+                console.log("Authenticated successfully");
+
+                client.writeFile("hello_world.txt", "Hello, world!\n", function(error, stat) {
+
+                if (error)
+                {
+                    console.error("Error while writing file: " + error);
+                }
+
+                console.log("File saved as revision " + stat.versionTag);
+              });
+            });
+        }
+
+    </script>
+  </head>
+  <body onload="test();">
+
+    <p>
+      Dropbox upload demo page.
+    </p>
+
+  </body>
+</html>
