@@ -30,12 +30,33 @@
                 chooserElem.addEventListener("change", function(e) {
 
                     var file = chooserElem.files[0];
-
-                    var startDate = new Date();
                     console.log("Uploading files");
+                    var uploadCount = parseInt(document.getElementById("concurrency").value);
+                    var startDate = new Date();
 
-                    for (var i=0; i < 4; i++)
+                    var outputElem = document.getElementById("output");
+
+                    function logOutput(arr)
                     {
+                        if (outputElem.value.length > 0)
+                        {
+                            outputElem.value += "\n";
+                        }
+
+                        outputElem.value += arr.join(",");
+                    }
+
+                    // csv header
+                    logOutput([
+                        "path",
+                        "size",
+                        "versionTag",
+                        "elapsedTime"
+                    ]);
+
+                    for (var i=0; i < uploadCount; i++)
+                    {
+
                         client.writeFile(file.name + "." + i, file, function(error, stat) {
 
                             if (error)
@@ -48,6 +69,14 @@
 
                             var elapsedMillis = new Date() - startDate;
                             console.log("Elapsed time: " + (elapsedMillis / 1000).toFixed(3) + " seconds.");
+
+                            // csv row
+                            logOutput([
+                                stat.path,
+                                stat.size,
+                                stat.versionTag,
+                                (elapsedMillis / 1000).toFixed(3)
+                            ]);
                         });
                     }
 
@@ -64,6 +93,14 @@
     <p>
       Choose a file to upload:
       <input id="chooser" type="file" disabled />
+    </p>
+    <p>
+      Concurrent uploads:
+      <input id="concurrency" type="text" size="3" value="4" />
+    </p>
+    <p>
+      Output:<br/>
+      <textarea id="output" rows="12" cols="80"></textarea>
     </p>
 
   </body>
