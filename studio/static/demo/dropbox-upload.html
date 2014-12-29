@@ -8,6 +8,7 @@
 <html>
   <head>
     <script src="//cdnjs.cloudflare.com/ajax/libs/dropbox.js/0.10.2/dropbox.min.js"></script>
+    <script src="/static/js/jquery-1.11.2.min.js"></script>
     <script>
 
         function setup()
@@ -25,16 +26,16 @@
 
                 console.log("Authenticated successfully");
 
-                var chooserElem = document.getElementById("chooser");
+                var chooserElem = $("#chooser").get(0);
 
                 chooserElem.addEventListener("change", function(e) {
 
                     var file = chooserElem.files[0];
                     console.log("Uploading files");
-                    var uploadCount = parseInt(document.getElementById("concurrency").value);
+                    var uploadCount = parseInt($("#concurrency").val());
                     var startDate = new Date();
 
-                    var outputElem = document.getElementById("output");
+                    var outputElem = $("#output").get(0);
 
                     function logOutput(arr)
                     {
@@ -86,6 +87,16 @@
             });
         }
 
+        window.URL = window.URL || window.webkitURL;
+
+        function readUrl()
+        {
+            var url = $("#read-url").val();
+            $("#audio").get(0).src = url;
+
+            // NOTE: cannot request with XHR due to x-origin restrictions
+        }
+
     </script>
   </head>
   <body onload="setup();">
@@ -101,6 +112,17 @@
     <p>
       Output:<br/>
       <textarea id="output" rows="12" cols="80"></textarea>
+    </p>
+
+    <hr/>
+
+    <p>
+      Load audio file from public URL:
+      <input id="read-url" type="url" size="80" />
+      <button onclick="readUrl();">Submit</button>
+    </p>
+    <p>
+      <audio id="audio" controls />
     </p>
 
   </body>
