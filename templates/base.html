@@ -7,6 +7,15 @@
     <link rel="stylesheet" href="{% static 'css/style-xlarge.css' %}" />
     <style type="text/css">
 
+      #header {
+        background-color: #bcbdbf;
+        line-height: 0;
+      }
+
+      #header img {
+        border-left-radius: 10px;
+      }
+
       #content {
         padding: 15px;
       }
@@ -17,6 +26,11 @@
   </head>
   <body>
     {% block body %}
+    {% spaceless %}
+    <div id="header">
+      <img src="{% static 'images/mist-logo-small.png' %}" />
+    </div>
+    {% endspaceless %}
     <div id="content">
       {% block content %}
       <h1>It's just a vapor ...</h1>
