@@ -88,13 +88,21 @@
         }
 
         window.URL = window.URL || window.webkitURL;
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+
+        var audioContext = new AudioContext();
 
         function readUrl()
         {
-            var url = $("#read-url").val();
-            $("#audio").get(0).src = url;
-
             // NOTE: cannot request with XHR due to x-origin restrictions
+            var url = $("#read-url").val();
+            var audioElem = $("#audio").get(0);
+
+            audioElem.addEventListener("loadeddata", function() {
+                var source = audioContext.createMediaElementSource(audioElem);
+            }, false);
+
+            audioElem.src = url;
         }
 
     </script>
@@ -120,6 +128,9 @@
       Load audio file from public URL:
       <input id="read-url" type="url" size="80" />
       <button onclick="readUrl();">Submit</button>
+    </p>
+    <p>
+      (Note: requires "dl=1" in the query string)
     </p>
     <p>
       <audio id="audio" controls />
