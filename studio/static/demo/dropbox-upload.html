@@ -4,6 +4,9 @@
   Dropbox upload demo based on:
   https://github.com/dropbox/dropbox-js/blob/stable/guides/getting_started.md
 
+  API documentation:
+  http://coffeedoc.info/github/dropbox/dropbox-js/master/class_index.html
+
 -->
 <html>
   <head>
@@ -11,11 +14,11 @@
     <script src="/static/js/jquery-1.11.2.min.js"></script>
     <script>
 
+        // MistStudio app key (https://www.dropbox.com/developers/apps/info/dj2e7jb5n7q6j60)
+        var client = new Dropbox.Client({ key: "dj2e7jb5n7q6j60" });
+
         function setup()
         {
-            // MistStudio app key (https://www.dropbox.com/developers/apps/info/dj2e7jb5n7q6j60)
-            var client = new Dropbox.Client({ key: "dj2e7jb5n7q6j60" });
-
             client.authenticate(function(error, client) {
 
                 if (error)
@@ -105,6 +108,12 @@
             audioElem.src = url;
         }
 
+        function signOut()
+        {
+            client.signOut();
+            window.location.href = window.location.href;
+        }
+
     </script>
   </head>
   <body onload="setup();">
@@ -134,6 +143,12 @@
     </p>
     <p>
       <audio id="audio" controls />
+    </p>
+
+    <hr/>
+
+    <p>
+      <a href="javascript:signOut();">Unlink Dropbox account</a>
     </p>
 
   </body>
