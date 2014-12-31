@@ -7,6 +7,18 @@
     <link rel="stylesheet" href="{% static 'css/style-xlarge.css' %}" />
     <style type="text/css">
 
+      #header {
+        background-color: rgb(192, 192, 194);
+        line-height: 0;
+        color: rgb(134, 134, 128);
+        border-bottom: 1px solid #999999;
+      }
+
+      #header img {
+        border-left-radius: 10px;
+        vertical-align: middle;
+      }
+
       #content {
         padding: 15px;
       }
@@ -17,6 +29,12 @@
   </head>
   <body>
     {% block body %}
+    {% spaceless %}
+    <div id="header">
+      <img src="{% static 'images/mist-logo-small.png' %}" />
+      Easily share your musical ideas with others.
+    </div>
+    {% endspaceless %}
     <div id="content">
       {% block content %}
       <h1>It's just a vapor ...</h1>
