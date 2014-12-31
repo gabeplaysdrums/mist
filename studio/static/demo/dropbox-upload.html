@@ -4,17 +4,21 @@
   Dropbox upload demo based on:
   https://github.com/dropbox/dropbox-js/blob/stable/guides/getting_started.md
 
+  API documentation:
+  http://coffeedoc.info/github/dropbox/dropbox-js/master/class_index.html
+
 -->
 <html>
   <head>
     <script src="//cdnjs.cloudflare.com/ajax/libs/dropbox.js/0.10.2/dropbox.min.js"></script>
+    <script src="/static/js/jquery-1.11.2.min.js"></script>
     <script>
+
+        // MistStudio app key (https://www.dropbox.com/developers/apps/info/dj2e7jb5n7q6j60)
+        var client = new Dropbox.Client({ key: "dj2e7jb5n7q6j60" });
 
         function setup()
         {
-            // MistStudio app key (https://www.dropbox.com/developers/apps/info/dj2e7jb5n7q6j60)
-            var client = new Dropbox.Client({ key: "dj2e7jb5n7q6j60" });
-
             client.authenticate(function(error, client) {
 
                 if (error)
@@ -25,16 +29,16 @@
 
                 console.log("Authenticated successfully");
 
-                var chooserElem = document.getElementById("chooser");
+                var chooserElem = $("#chooser").get(0);
 
                 chooserElem.addEventListener("change", function(e) {
 
                     var file = chooserElem.files[0];
                     console.log("Uploading files");
-                    var uploadCount = parseInt(document.getElementById("concurrency").value);
+                    var uploadCount = parseInt($("#concurrency").val());
                     var startDate = new Date();
 
-                    var outputElem = document.getElementById("output");
+                    var outputElem = $("#output").get(0);
 
                     function logOutput(arr)
                     {
@@ -51,12 +55,13 @@
                         "path",
                         "size",
                         "versionTag",
-                        "elapsedTime"
+                        "elapsedTime",
+                        "url",
+                        "urlExpiresAt"
                     ]);
 
                     for (var i=0; i < uploadCount; i++)
                     {
-
                         client.writeFile(file.name + "." + i, file, function(error, stat) {
 
                             if (error)
@@ -70,13 +75,26 @@
                             var elapsedMillis = new Date() - startDate;
                             console.log("Elapsed time: " + (elapsedMillis / 1000).toFixed(3) + " seconds.");
 
-                            // csv row
-                            logOutput([
-                                stat.path,
-                                stat.size,
-                                stat.versionTag,
-                                (elapsedMillis / 1000).toFixed(3)
-                            ]);
+                            (function(stat, elapsedMillis) {
+
+                                client.makeUrl(
+                                    stat.path,
+                                    { downloadHack: true },
+                                    function(error, shareUrl) {
+
+                                    // csv row
+                                    logOutput([
+                                        stat.path,
+                                        stat.size,
+                                        stat.versionTag,
+                                        (elapsedMillis / 1000).toFixed(3),
+                                        shareUrl.url,
+                                        shareUrl.expiresAt.toISOString()
+                                    ]);
+
+                                });
+
+                            })(stat, elapsedMillis);
                         });
                     }
 
@@ -84,6 +102,30 @@
 
                 chooserElem.disabled = false;
             });
+        }
+
+        window.URL = window.URL || window.webkitURL;
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+
+        var audioContext = new AudioContext();
+
+        function readUrl()
+        {
+            // NOTE: cannot request with XHR due to x-origin restrictions
+            var url = $("#read-url").val();
+            var audioElem = $("#audio").get(0);
+
+            audioElem.addEventListener("loadeddata", function() {
+                //var source = audioContext.createMediaElementSource(audioElem);
+            }, false);
+
+            audioElem.src = url;
+        }
+
+        function signOut()
+        {
+            client.signOut();
+            window.location.href = window.location.href;
         }
 
     </script>
@@ -101,6 +143,23 @@
     <p>
       Output:<br/>
       <textarea id="output" rows="12" cols="80"></textarea>
+    </p>
+
+    <hr/>
+
+    <p>
+      Load audio file from public download URL:
+      <input id="read-url" type="url" size="80" />
+      <button onclick="readUrl();">Submit</button>
+    </p>
+    <p>
+      <audio id="audio" controls />
+    </p>
+
+    <hr/>
+
+    <p>
+      <a href="javascript:signOut();">Unlink Dropbox account</a>
     </p>
 
   </body>
