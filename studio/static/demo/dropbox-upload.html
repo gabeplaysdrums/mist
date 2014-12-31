@@ -55,12 +55,13 @@
                         "path",
                         "size",
                         "versionTag",
-                        "elapsedTime"
+                        "elapsedTime",
+                        "url",
+                        "urlExpiresAt"
                     ]);
 
                     for (var i=0; i < uploadCount; i++)
                     {
-
                         client.writeFile(file.name + "." + i, file, function(error, stat) {
 
                             if (error)
@@ -74,13 +75,26 @@
                             var elapsedMillis = new Date() - startDate;
                             console.log("Elapsed time: " + (elapsedMillis / 1000).toFixed(3) + " seconds.");
 
-                            // csv row
-                            logOutput([
-                                stat.path,
-                                stat.size,
-                                stat.versionTag,
-                                (elapsedMillis / 1000).toFixed(3)
-                            ]);
+                            (function(stat, elapsedMillis) {
+
+                                client.makeUrl(
+                                    stat.path,
+                                    { downloadHack: true },
+                                    function(error, shareUrl) {
+
+                                    // csv row
+                                    logOutput([
+                                        stat.path,
+                                        stat.size,
+                                        stat.versionTag,
+                                        (elapsedMillis / 1000).toFixed(3),
+                                        shareUrl.url,
+                                        shareUrl.expiresAt.toISOString()
+                                    ]);
+
+                                });
+
+                            })(stat, elapsedMillis);
                         });
                     }
 
@@ -102,7 +116,7 @@
             var audioElem = $("#audio").get(0);
 
             audioElem.addEventListener("loadeddata", function() {
-                var source = audioContext.createMediaElementSource(audioElem);
+                //var source = audioContext.createMediaElementSource(audioElem);
             }, false);
 
             audioElem.src = url;
@@ -134,12 +148,9 @@
     <hr/>
 
     <p>
-      Load audio file from public URL:
+      Load audio file from public download URL:
       <input id="read-url" type="url" size="80" />
       <button onclick="readUrl();">Submit</button>
-    </p>
-    <p>
-      (Note: requires "dl=1" in the query string)
     </p>
     <p>
       <audio id="audio" controls />
