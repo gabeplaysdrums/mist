@@ -10,7 +10,7 @@
     <script src="/static/js/recorder.js"></script>
     <script>
 
-        // remove vendor prefixes
+        // fixup vendor prefixes
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 
@@ -21,10 +21,83 @@
         var recording = false;
         var audioBuffers = null;
         var testAudioElem = null;
+        var testSource = null;
+        var testScriptNode = null;
+        var testBuffer = null;
+        var testBufferSource = null;
+
+        function concatBuffers(buf1, buf2)
+        {
+            if (!buf1 && !buf2)
+            {
+                return null;
+            }
+
+            if (buf1 && buf2 && buf1.sampleRate != buf2.sampleRate)
+            {
+                throw "buffers must have the same sample rate";
+            }
+
+            var channels1 = buf1 ? buf1.numberOfChannels : 0;
+            var channels2 = buf2 ? buf2.numberOfChannels : 0;
+            var length1 = buf1 ? buf1.length : 0;
+            var length2 = buf2 ? buf2.length : 0;
+            var sampleRate = buf1 ? buf1.sampleRate : buf2.sampleRate;
+
+            var result = audioContext.createBuffer(Math.max(channels1, channels2), length1 + length2, sampleRate);
+
+            for (var channel=0; channel < channels1; channel++)
+            {
+                var data = buf1.getChannelData(channel);
+                var newData = result.getChannelData(channel);
+                newData.set(data);
+            }
+
+            for (var channel=0; channel < channels2; channel++)
+            {
+                var data = buf2.getChannelData(channel);
+                var newData = result.getChannelData(channel);
+                newData.set(data, length1);
+            }
+
+            return result;
+        }
 
         function initAudio()
         {
-            testAudioElem = $("#testSource").get(0);
+            testAudioElem = new Audio();
+            testAudioElem.autoplay = true;
+            testAudioElem.addEventListener("canplaythrough", function() {
+
+                testSource = audioContext.createMediaElementSource(testAudioElem);
+
+                // use a ScriptProcessorNode to extract raw audio samples
+                // https://developer.mozilla.org/en-US/docs/Web/API/ScriptProcessorNode
+                testScriptNode = audioContext.createScriptProcessor(16384, testSource.channelCount, audioContext.destination.channelCount);
+
+                testScriptNode.onaudioprocess = function(audioProcessingEvent) {
+                    var inputBuffer = audioProcessingEvent.inputBuffer;
+                    var outputBuffer = audioProcessingEvent.outputBuffer;
+                    testBuffer = concatBuffers(testBuffer, inputBuffer);
+                };
+
+                testSource.connect(testScriptNode);
+                testScriptNode.connect(audioContext.destination);
+
+            }, false);
+
+            var testSourceStart;
+
+            testAudioElem.addEventListener("ended", function() {
+                testSource.disconnect(testScriptNode);
+                testScriptNode.disconnect(audioContext.destination);
+                var elapsedMillis = new Date() - testSourceStart;
+                console.log("Finished loading test signal in " + (elapsedMillis / 1000).toFixed(3) + " seconds");
+            }, false);
+
+            testSourceStart = new Date();
+            console.log("Loading test signal");
+            testAudioElem.src = "/static/demo/click.wav";
 
             navigator.getUserMedia(
                 {
@@ -49,7 +122,6 @@
                         if (recording)
                         {
                             audioRecorder.stop();
-                            testAudioElem.load();
 
                             audioRecorder.getBuffer(function(buffers) {
 
@@ -82,26 +154,39 @@
                 });
         }
 
-        function playTestSource()
+        function playBuffers(buffers)
         {
-            // Following this recommendation:
-            // http://robert.ocallahan.org/2011/11/latency-of-html5-sounds.html?m=1
+            var newSource = audioContext.createBufferSource();
+            var newBuffer = audioContext.createBuffer( 2, buffers[0].length, audioContext.sampleRate );
+            newBuffer.getChannelData(0).set(buffers[0]);
+            newBuffer.getChannelData(1).set(buffers[1]);
+            newSource.buffer = newBuffer;
+            newSource.connect( audioContext.destination );
+            newSource.start(0);
+        }
 
-            testAudioElem.cloneNode(true).play();
+        function playTestSource(method)
+        {
+            method = method || "cloneNode";
+
+            if (method === "cloneNode")
+            {
+                // fire and forget method with cloneNode:
+                // http://robert.ocallahan.org/2011/11/latency-of-html5-sounds.html?m=1
+
+                testAudioElem.cloneNode(true).play();
+            }
+            else if (method === "WebAudio")
+            {
+                playBuffers([ testBuffer.getChannelData(0), testBuffer.getChannelData(1) ]);
+            }
         }
 
         function playAll()
         {
-            var newSource = audioContext.createBufferSource();
-            var newBuffer = audioContext.createBuffer( 2, audioBuffers[0].length, audioContext.sampleRate );
-            newBuffer.getChannelData(0).set(audioBuffers[0]);
-            newBuffer.getChannelData(1).set(audioBuffers[1]);
-            newSource.buffer = newBuffer;
-            newSource.connect( audioContext.destination );
-
             // start both the recording and the original source at the same time
+            playBuffers(audioBuffers);
             playTestSource();
-            newSource.start(0);
         }
 
         function calcLatency()
@@ -134,6 +219,5 @@
       <input id="recordBtn" type="button" value="Start" />
       <input type="button" value="Play recording and reference" onclick="playAll();"/>
     </p>
-    <audio id="testSource" src="/static/demo/click.wav" preload />
   </body>
 </html>
