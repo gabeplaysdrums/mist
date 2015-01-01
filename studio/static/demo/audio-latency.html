@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<!--
+
+  Audio recording latency demo
+
+-->
+<html>
+  <head>
+    <script src="/static/js/jquery-1.11.2.min.js"></script>
+    <script src="/static/js/recorder.js"></script>
+    <script>
+
+        // remove vendor prefixes
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+        var audioContext = new AudioContext();
+        var inputSource = null;
+        var inputGain = null;
+        var audioRecorder = null;
+        var recording = false;
+        var audioBuffers = null;
+        var testAudioElem = null;
+
+        function initAudio()
+        {
+            testAudioElem = $("#testSource").get(0);
+
+            navigator.getUserMedia(
+                {
+                    "audio": {
+                        "mandatory": {
+                            "googEchoCancellation": "false",
+                            "googAutoGainControl": "false",
+                            "googNoiseSuppression": "false",
+                            "googHighpassFilter": "false"
+                        },
+                        "optional": []
+                    },
+                },
+                function(stream) {
+                    inputSource = audioContext.createMediaStreamSource(stream);
+                    inputGain = audioContext.createGain();
+                    inputSource.connect(inputGain);
+                    audioRecorder = new Recorder(inputSource, { workerPath: "/static/js/recorderWorker.js" });
+
+                    $("#recordBtn").click(function() {
+
+                        if (recording)
+                        {
+                            audioRecorder.stop();
+                            testAudioElem.load();
+
+                            audioRecorder.getBuffer(function(buffers) {
+
+                                audioBuffers = buffers;
+                                var samples = calcLatency();
+                                console.log("Estimated latency: " + samples + " samples (" +
+                                    Math.floor(1000 * samples / audioContext.sampleRate) + " ms)");
+
+                            });
+
+                            recording = false;
+                            $(this).val("Start");
+
+                        }
+                        else
+                        {
+                            audioRecorder.clear();
+                            audioRecorder.record();
+                            testAudioElem.play();
+                            recording = true;
+                            $(this).val("Stop");
+                        }
+
+                    });
+
+                },
+                function(e) {
+                    alert('Error getting audio');
+                    console.log(e);
+                });
+        }
+
+        function playAll()
+        {
+            var newSource = audioContext.createBufferSource();
+            var newBuffer = audioContext.createBuffer( 2, audioBuffers[0].length, audioContext.sampleRate );
+            newBuffer.getChannelData(0).set(audioBuffers[0]);
+            newBuffer.getChannelData(1).set(audioBuffers[1]);
+            newSource.buffer = newBuffer;
+            newSource.connect( audioContext.destination );
+
+            testAudioElem.load();
+
+            // start both the recording and the original source at the same time
+            testAudioElem.play();
+            newSource.start(0);
+        }
+
+        function calcLatency()
+        {
+            var sum = 0;
+
+            for (var i=0; i < audioBuffers[0].length; i++)
+            {
+                sum += Math.abs(audioBuffers[0][i]);
+            }
+
+            var mean = sum / audioBuffers[0].length;
+            var j;
+
+            for (j=0; j < audioBuffers[0].length; j++)
+            {
+                if (Math.abs(audioBuffers[0][j]) > mean)
+                {
+                    break;
+                }
+            }
+
+            return j;
+        }
+
+    </script>
+  </head>
+  <body onload="initAudio();">
+    <p>
+      <input id="recordBtn" type="button" value="Start" />
+      <input type="button" value="Play recording and reference" onclick="playAll();"/>
+    </p>
+    <audio id="testSource" src="/static/demo/click.wav" />
+  </body>
+</html>
