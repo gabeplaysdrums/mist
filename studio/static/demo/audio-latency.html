@@ -24,7 +24,6 @@
         var testSource = null;
         var testScriptNode = null;
         var testBuffer = null;
-        var testBufferSource = null;
 
         function concatBuffers(buf1, buf2)
         {
@@ -134,7 +133,6 @@
 
                             recording = false;
                             $(this).val("Start");
-
                         }
                         else
                         {
@@ -165,28 +163,70 @@
             newSource.start(0);
         }
 
-        function playTestSource(method)
+        function playTestSource(method, callback)
         {
             method = method || "cloneNode";
+            callback = callback || function(){};
 
             if (method === "cloneNode")
             {
                 // fire and forget method with cloneNode:
                 // http://robert.ocallahan.org/2011/11/latency-of-html5-sounds.html?m=1
 
-                testAudioElem.cloneNode(true).play();
+                var audio = testAudioElem.cloneNode(true);
+                audio.addEventListener("ended", callback, false);
             }
             else if (method === "WebAudio")
             {
-                playBuffers([ testBuffer.getChannelData(0), testBuffer.getChannelData(1) ]);
+                var source = audioContext.createBufferSource();
+                source.buffer = testBuffer;
+                source.onended = callback;
+                source.connect( audioContext.destination );
+                source.start(0);
             }
         }
 
-        function playAll()
+        function playRecordingAndReference()
         {
             // start both the recording and the original source at the same time
             playBuffers(audioBuffers);
             playTestSource();
+        }
+
+        function playTestSourceAllMethods()
+        {
+            var $results = $("#playback-results");
+
+            function log(cols)
+            {
+                var tmp = "";
+
+                if ($results.val().length > 0)
+                {
+                    tmp = "\n";
+                }
+
+                tmp += cols.join('\t');
+                $results.val($results.val() + tmp);
+            }
+
+            if ($results.val().length === 0)
+            {
+                log([ "method", "elapsedTime" ]);
+            }
+
+            var methods = [ "cloneNode", "WebAudio" ];
+
+            for (var i=0; i < methods.length; i++)
+            {
+                (function(startTime, method) {
+                    playTestSource(method, function(e) {
+                        var elapsedMillis = e.timeStamp - startTime;
+                        console.log(method + " completed in " + (elapsedMillis / 1000).toFixed(3) + " seconds");
+                        log([ method, (elapsedMillis / 1000).toFixed(3) ]);
+                    });
+                })((new Date()).getTime(), methods[i]);
+            }
         }
 
         function calcLatency()
@@ -217,7 +257,15 @@
   <body onload="initAudio();">
     <p>
       <input id="recordBtn" type="button" value="Start" />
-      <input type="button" value="Play recording and reference" onclick="playAll();"/>
+      <input type="button" value="Play recording and reference" onclick="playRecordingAndReference();"/>
+    </p>
+    <hr />
+    <p>
+      <input type="button" value="Play reference using both methods" onclick="playTestSourceAllMethods();"/>
+    </p>
+    <p>
+      Results: <br />
+      <textarea id="playback-results" rows="20" cols="80"></textarea>
     </p>
   </body>
 </html>
