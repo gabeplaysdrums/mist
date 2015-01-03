@@ -36,6 +36,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'djangobower',
 ) + (
     'studio',
 )
@@ -93,4 +94,23 @@ STATICFILES_DIRS = (
 
 TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, 'templates'),
+)
+
+
+# Bower
+# http://django-bower.readthedocs.org/en/latest/installation.html
+
+BOWER_COMPONENTS_ROOT = BASE_DIR
+
+BOWER_INSTALLED_APPS = (
+    'jquery',
+    'recorderjs',
+)
+
+BOWER_COMPONENTS_DIR = os.path.join(BASE_DIR, 'bower_components')
+
+# list static file directories manually instead of using bower.finders.BowerFinder
+STATICFILES_DIRS += (
+    ('external/jquery', os.path.join(BOWER_COMPONENTS_DIR, 'jquery', 'dist')),
+    ('external/recorderjs', os.path.join(BOWER_COMPONENTS_DIR, 'recorderjs')),
 )
