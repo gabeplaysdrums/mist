@@ -9,4 +9,5 @@ urlpatterns = patterns('',
 
     url(r'^admin/', include(admin.site.urls)),
     url(r'^$', 'studio.views.home', name='home'),
+    url(r'^tests/$', 'studio.views.tests', name='tests'),
 )

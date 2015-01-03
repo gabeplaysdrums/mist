@@ -1,0 +1,15 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+  <link rel="stylesheet" href="{% static 'external/qunit/qunit.css' %}">
+</head>
+<body>
+  <div id="qunit"></div>
+  <div id="qunit-fixture"></div>
+  <script src="{% static 'external/qunit/qunit.js' %}"></script>
+  <script src="{{ tests_url }}"></script>
+</body>
+</html>
