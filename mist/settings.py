@@ -105,6 +105,7 @@ BOWER_COMPONENTS_ROOT = BASE_DIR
 BOWER_INSTALLED_APPS = (
     'jquery',
     'recorderjs',
+    'qunit',
 )
 
 BOWER_COMPONENTS_DIR = os.path.join(BASE_DIR, 'bower_components')
@@ -113,4 +114,5 @@ BOWER_COMPONENTS_DIR = os.path.join(BASE_DIR, 'bower_components')
 STATICFILES_DIRS += (
     ('external/jquery', os.path.join(BOWER_COMPONENTS_DIR, 'jquery', 'dist')),
     ('external/recorderjs', os.path.join(BOWER_COMPONENTS_DIR, 'recorderjs')),
+    ('external/qunit', os.path.join(BOWER_COMPONENTS_DIR, 'qunit', 'qunit')),
 )
