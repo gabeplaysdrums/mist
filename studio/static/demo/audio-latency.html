@@ -7,7 +7,7 @@
 <html>
   <head>
     <script src="/static/external/jquery/jquery.min.js"></script>
-    <script src="/static/js/recorder.js"></script>
+    <script src="/static/external/recorderjs/recorder.js"></script>
     <script>
 
         // fixup vendor prefixes
@@ -140,7 +140,7 @@
                     inputSource = audioContext.createMediaStreamSource(stream);
                     inputGain = audioContext.createGain();
                     inputSource.connect(inputGain);
-                    audioRecorder = new Recorder(inputSource, { workerPath: "/static/js/recorderWorker.js" });
+                    audioRecorder = new Recorder(inputSource, { workerPath: "/static/external/recorderjs/recorderWorker.js" });
 
                     $("#recordBtn").click(function() {
 
