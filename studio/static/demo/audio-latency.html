@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<!--
+
+  Audio recording latency demo
+
+-->
+<html>
+  <head>
+    <script src="/static/js/jquery-1.11.2.min.js"></script>
+    <script src="/static/js/recorder.js"></script>
+    <script>
+
+        // fixup vendor prefixes
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+        var audioContext = new AudioContext();
+        var inputSource = null;
+        var inputGain = null;
+        var audioRecorder = null;
+        var recording = false;
+        var audioBuffers = null;
+        var testAudioElem = null;
+        var testAudioElem2 = null;
+        var testSource = null;
+        var testScriptNode = null;
+        var testBuffer = null;
+        var testAudioElemEndedCallback = null;
+
+        function concatBuffers(buf1, buf2)
+        {
+            if (!buf1 && !buf2)
+            {
+                return null;
+            }
+
+            if (buf1 && buf2 && buf1.sampleRate != buf2.sampleRate)
+            {
+                throw "buffers must have the same sample rate";
+            }
+
+            var channels1 = buf1 ? buf1.numberOfChannels : 0;
+            var channels2 = buf2 ? buf2.numberOfChannels : 0;
+            var length1 = buf1 ? buf1.length : 0;
+            var length2 = buf2 ? buf2.length : 0;
+            var sampleRate = buf1 ? buf1.sampleRate : buf2.sampleRate;
+
+            var result = audioContext.createBuffer(Math.max(channels1, channels2), length1 + length2, sampleRate);
+
+            for (var channel=0; channel < channels1; channel++)
+            {
+                var data = buf1.getChannelData(channel);
+                var newData = result.getChannelData(channel);
+                newData.set(data);
+            }
+
+            for (var channel=0; channel < channels2; channel++)
+            {
+                var data = buf2.getChannelData(channel);
+                var newData = result.getChannelData(channel);
+                newData.set(data, length1);
+            }
+
+            return result;
+        }
+
+        function initAudio()
+        {
+            testAudioElem = new Audio();
+            testAudioElem.autoplay = true;
+
+            var initScriptNode = function() {
+                testAudioElem.removeEventListener("canplaythrough", initScriptNode, false);
+
+                testSource = audioContext.createMediaElementSource(testAudioElem);
+
+                // use a ScriptProcessorNode to extract raw audio samples
+                // https://developer.mozilla.org/en-US/docs/Web/API/ScriptProcessorNode
+                testScriptNode = audioContext.createScriptProcessor(16384, testSource.channelCount, audioContext.destination.channelCount);
+
+                testScriptNode.onaudioprocess = function(audioProcessingEvent) {
+                    var inputBuffer = audioProcessingEvent.inputBuffer;
+                    var outputBuffer = audioProcessingEvent.outputBuffer;
+                    testBuffer = concatBuffers(testBuffer, inputBuffer);
+                };
+
+                testSource.connect(testScriptNode);
+                testScriptNode.connect(audioContext.destination);
+            };
+
+            testAudioElem.addEventListener("canplaythrough", initScriptNode, false);
+
+            var testSourceStart;
+
+            var uninitScriptNode = function() {
+                testSource.disconnect(testScriptNode);
+                testScriptNode.disconnect(audioContext.destination);
+                var elapsedMillis = new Date() - testSourceStart;
+                console.log("Finished loading test signal in " + (elapsedMillis / 1000).toFixed(3) + " seconds");
+
+                testScriptNode = null;
+                testSource = null;
+                testAudioElem = null;
+            };
+
+            testAudioElem.addEventListener("ended", uninitScriptNode, false);
+
+            testSourceStart = new Date();
+            console.log("Loading test signal");
+            testAudioElem.src = "/static/demo/click.wav";
+
+            // create a second audio element that is safe to reuse
+            testAudioElem2 = testAudioElem.cloneNode(true);
+            testAudioElem2.volume = 0;
+
+            testAudioElem2.addEventListener("ended", function(e) {
+                testAudioElem2.volume = 1;
+                testAudioElem2.autoplay = false;
+                testAudioElem2.load();
+
+                if (testAudioElemEndedCallback)
+                {
+                    testAudioElemEndedCallback(e);
+                }
+            }, false);
+
+            navigator.getUserMedia(
+                {
+                    "audio": {
+                        "mandatory": {
+                            "googEchoCancellation": "false",
+                            "googAutoGainControl": "false",
+                            "googNoiseSuppression": "false",
+                            "googHighpassFilter": "false"
+                        },
+                        "optional": []
+                    },
+                },
+                function(stream) {
+                    inputSource = audioContext.createMediaStreamSource(stream);
+                    inputGain = audioContext.createGain();
+                    inputSource.connect(inputGain);
+                    audioRecorder = new Recorder(inputSource, { workerPath: "/static/js/recorderWorker.js" });
+
+                    $("#recordBtn").click(function() {
+
+                        if (recording)
+                        {
+                            audioRecorder.stop();
+
+                            audioRecorder.getBuffer(function(buffers) {
+
+                                audioBuffers = buffers;
+                                var samples = calcLatency();
+                                console.log("Estimated latency: " + samples + " samples (" +
+                                    Math.floor(1000 * samples / audioContext.sampleRate) + " ms)");
+
+                            });
+
+                            recording = false;
+                            $(this).val("Start");
+                        }
+                        else
+                        {
+                            audioRecorder.clear();
+                            audioRecorder.record();
+                            playTestSource();
+                            recording = true;
+                            $(this).val("Stop");
+                        }
+
+                    });
+
+                },
+                function(e) {
+                    alert('Error getting audio');
+                    console.log(e);
+                });
+        }
+
+        function playBuffers(buffers)
+        {
+            var newSource = audioContext.createBufferSource();
+            var newBuffer = audioContext.createBuffer( 2, buffers[0].length, audioContext.sampleRate );
+            newBuffer.getChannelData(0).set(buffers[0]);
+            newBuffer.getChannelData(1).set(buffers[1]);
+            newSource.buffer = newBuffer;
+            newSource.connect( audioContext.destination );
+            newSource.start(0);
+        }
+
+        function playTestSource(method, callback)
+        {
+            method = method || "cloneNode";
+            callback = callback || function(){};
+
+            if (method === "cloneNode")
+            {
+                // fire and forget method with cloneNode:
+                // http://robert.ocallahan.org/2011/11/latency-of-html5-sounds.html?m=1
+
+                var audio = testAudioElem2.cloneNode(true);
+                audio.addEventListener("ended", callback, false);
+                audio.play();
+            }
+            else if (method === "WebAudio")
+            {
+                var source = audioContext.createBufferSource();
+                source.buffer = testBuffer;
+                source.onended = callback;
+                source.connect( audioContext.destination );
+                source.start(0);
+            }
+            else if (method === "sameMediaElement")
+            {
+                testAudioElemEndedCallback = callback;
+                testAudioElem2.play();
+            }
+        }
+
+        function playRecordingAndReference()
+        {
+            // start both the recording and the original source at the same time
+            playBuffers(audioBuffers);
+            playTestSource();
+        }
+
+        function playTestSourceAllMethods()
+        {
+            var $results = $("#playback-results");
+
+            function log(cols)
+            {
+                var tmp = "";
+
+                if ($results.val().length > 0)
+                {
+                    tmp = "\n";
+                }
+
+                tmp += cols.join('\t');
+                $results.val($results.val() + tmp);
+            }
+
+            if ($results.val().length === 0)
+            {
+                log([ "method", "elapsedTime" ]);
+            }
+
+            var methods = [ "cloneNode", "WebAudio", "sameMediaElement" ];
+
+            for (var i=0; i < methods.length; i++)
+            {
+                (function(startTime, method) {
+                    playTestSource(method, function(e) {
+                        var elapsedMillis = e.timeStamp - startTime;
+                        console.log(method + " completed in " + (elapsedMillis / 1000).toFixed(3) + " seconds");
+                        log([ method, (elapsedMillis / 1000).toFixed(3) ]);
+                    });
+                })((new Date()).getTime(), methods[i]);
+            }
+        }
+
+        function calcLatency()
+        {
+            var sum = 0;
+
+            for (var i=0; i < audioBuffers[0].length; i++)
+            {
+                sum += Math.abs(audioBuffers[0][i]);
+            }
+
+            var mean = sum / audioBuffers[0].length;
+            var j;
+
+            for (j=0; j < audioBuffers[0].length; j++)
+            {
+                if (Math.abs(audioBuffers[0][j]) > mean)
+                {
+                    break;
+                }
+            }
+
+            return j;
+        }
+
+    </script>
+  </head>
+  <body onload="initAudio();">
+    <p>
+      <input id="recordBtn" type="button" value="Start" />
+      <input type="button" value="Play recording and reference" onclick="playRecordingAndReference();"/>
+    </p>
+    <hr />
+    <p>
+      <input type="button" value="Play reference using all methods" onclick="playTestSourceAllMethods();"/>
+    </p>
+    <p>
+      Results: <br />
+      <textarea id="playback-results" rows="20" cols="80"></textarea>
+    </p>
+  </body>
+</html>
