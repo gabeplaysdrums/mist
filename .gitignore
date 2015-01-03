@@ -10,3 +10,6 @@ db.sqlite3
 
 # PyCharm IDE
 .idea/
+
+# Bower
+bower_components/
