@@ -89,12 +89,6 @@ STATICFILES_DIRS = (
     os.path.join(BASE_DIR, "static"),
 )
 
-STATICFILES_FINDERS = (
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-    'djangobower.finders.BowerFinder',
-)
-
 
 # Templates
 
@@ -110,4 +104,9 @@ BOWER_COMPONENTS_ROOT = BASE_DIR
 
 BOWER_INSTALLED_APPS = (
     'jquery',
+)
+
+# list static file directories manually instead of using bower.finders.BowerFinder
+STATICFILES_DIRS += (
+    ('external/jquery', os.path.join(BASE_DIR, 'bower_components', 'jquery', 'dist')),
 )
