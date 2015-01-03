@@ -21,9 +21,11 @@
         var recording = false;
         var audioBuffers = null;
         var testAudioElem = null;
+        var testAudioElem2 = null;
         var testSource = null;
         var testScriptNode = null;
         var testBuffer = null;
+        var testAudioElemEndedCallback = null;
 
         function concatBuffers(buf1, buf2)
         {
@@ -66,7 +68,9 @@
         {
             testAudioElem = new Audio();
             testAudioElem.autoplay = true;
-            testAudioElem.addEventListener("canplaythrough", function() {
+
+            var initScriptNode = function() {
+                testAudioElem.removeEventListener("canplaythrough", initScriptNode, false);
 
                 testSource = audioContext.createMediaElementSource(testAudioElem);
 
@@ -82,21 +86,43 @@
 
                 testSource.connect(testScriptNode);
                 testScriptNode.connect(audioContext.destination);
+            };
 
-            }, false);
+            testAudioElem.addEventListener("canplaythrough", initScriptNode, false);
 
             var testSourceStart;
 
-            testAudioElem.addEventListener("ended", function() {
+            var uninitScriptNode = function() {
                 testSource.disconnect(testScriptNode);
                 testScriptNode.disconnect(audioContext.destination);
                 var elapsedMillis = new Date() - testSourceStart;
                 console.log("Finished loading test signal in " + (elapsedMillis / 1000).toFixed(3) + " seconds");
-            }, false);
+
+                testScriptNode = null;
+                testSource = null;
+                testAudioElem = null;
+            };
+
+            testAudioElem.addEventListener("ended", uninitScriptNode, false);
 
             testSourceStart = new Date();
             console.log("Loading test signal");
             testAudioElem.src = "/static/demo/click.wav";
+
+            // create a second audio element that is safe to reuse
+            testAudioElem2 = testAudioElem.cloneNode(true);
+            testAudioElem2.volume = 0;
+
+            testAudioElem2.addEventListener("ended", function(e) {
+                testAudioElem2.volume = 1;
+                testAudioElem2.autoplay = false;
+                testAudioElem2.load();
+
+                if (testAudioElemEndedCallback)
+                {
+                    testAudioElemEndedCallback(e);
+                }
+            }, false);
 
             navigator.getUserMedia(
                 {
@@ -173,8 +199,9 @@
                 // fire and forget method with cloneNode:
                 // http://robert.ocallahan.org/2011/11/latency-of-html5-sounds.html?m=1
 
-                var audio = testAudioElem.cloneNode(true);
+                var audio = testAudioElem2.cloneNode(true);
                 audio.addEventListener("ended", callback, false);
+                audio.play();
             }
             else if (method === "WebAudio")
             {
@@ -183,6 +210,11 @@
                 source.onended = callback;
                 source.connect( audioContext.destination );
                 source.start(0);
+            }
+            else if (method === "sameMediaElement")
+            {
+                testAudioElemEndedCallback = callback;
+                testAudioElem2.play();
             }
         }
 
@@ -215,7 +247,7 @@
                 log([ "method", "elapsedTime" ]);
             }
 
-            var methods = [ "cloneNode", "WebAudio" ];
+            var methods = [ "cloneNode", "WebAudio", "sameMediaElement" ];
 
             for (var i=0; i < methods.length; i++)
             {
@@ -261,7 +293,7 @@
     </p>
     <hr />
     <p>
-      <input type="button" value="Play reference using both methods" onclick="playTestSourceAllMethods();"/>
+      <input type="button" value="Play reference using all methods" onclick="playTestSourceAllMethods();"/>
     </p>
     <p>
       Results: <br />
